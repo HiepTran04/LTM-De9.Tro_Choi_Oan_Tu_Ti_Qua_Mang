@@ -20,7 +20,7 @@
 </div>
 
 ## 📖 1. Giới thiệu
-Đề tài “Trò chơi Oẳn Tù Tì qua mạng” giúp người học vận dụng kiến thức nền tảng về lập trình mạng để xây dựng một ứng dụng có tính tương tác trực tuyến dựa trên mô hình Client/Server. Ứng dụng được phát triển thông qua cơ chế giao tiếp bằng Socket, cho phép nhiều người chơi tham gia và thực hiện các lượt chơi theo thời gian thực. Kết thúc đề tài, sinh viên có khả năng thiết kế, cài đặt và triển khai một trò chơi mạng đơn giản, nắm vững cách thức truyền nhận dữ liệu, xử lý đồng bộ giữa các client và áp dụng các nguyên tắc của lập trình mạng vào một ứng dụng thực tế.
+Đề tài “Trò chơi Oẳn Tù Tì qua mạng” giúp người học vận dụng kiến thức nền tảng về lập trình mạng để xây dựng một ứng dụng có tính tương tác trực tuyến dựa trên mô hình Client/Server. Ứng dụng được phát triển thông qua cơ chế giao tiếp bằng giao thức TCP Socket, cho phép nhiều người chơi tham gia và thực hiện các lượt chơi theo thời gian thực. Kết thúc đề tài, sinh viên có khả năng thiết kế, cài đặt và triển khai một trò chơi mạng đơn giản, nắm vững cách thức truyền nhận dữ liệu, xử lý đồng bộ giữa các client và áp dụng các nguyên tắc của lập trình mạng vào một ứng dụng thực tế.
 
 ## 🔧 2. Ngôn ngữ lập trình sử dụng: [![Java](https://img.shields.io/badge/Java-007396?style=for-the-badge&logo=java&logoColor=white)](https://www.java.com/)
 

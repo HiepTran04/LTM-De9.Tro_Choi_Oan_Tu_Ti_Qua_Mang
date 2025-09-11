@@ -50,7 +50,7 @@
   - Dùng để truyền dữ liệu (chuỗi ký tự, thông điệp, lựa chọn của người chơi) giữa client và server.  
 - [![IDE](https://img.shields.io/badge/Eclipse%20%2F%20IntelliJ%20IDEA%20%2F%20NetBeans-800080?style=flat-square&logo=eclipseide&logoColor=white)]()  
   - IDE hỗ trợ phát triển: viết, biên dịch và debug chương trình Java.  
-## 🚀 3. Hình ảnh chức năng
+## 🚀 3. Hình ảnh các chức năng chính
 
 ## 📝 4. Các bước cài đặt
 

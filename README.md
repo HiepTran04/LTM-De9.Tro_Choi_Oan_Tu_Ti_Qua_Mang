@@ -57,7 +57,7 @@ Người chơi nhập **Username** để tham gia trò chơi.
 <p align="center">
   <img src="docs/Login.png" alt="Login UI" width="400"/>
 </p>  
-📌 **Hình ảnh 1: Giao diện đăng nhập**
+**Hình ảnh 1: Giao diện đăng nhập**
 
 ---
 

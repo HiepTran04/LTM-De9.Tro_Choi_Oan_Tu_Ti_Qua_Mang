@@ -49,10 +49,77 @@
 - [![Java I/O](https://img.shields.io/badge/Java%20I%2FO-FF8C00?style=flat-square&logo=openjdk&logoColor=white)]()  
   - Dùng để truyền dữ liệu (chuỗi ký tự, thông điệp, lựa chọn của người chơi) giữa client và server.  
 - [![IDE](https://img.shields.io/badge/Eclipse%20%2F%20IntelliJ%20IDEA%20%2F%20NetBeans-800080?style=flat-square&logo=eclipseide&logoColor=white)]()  
-  - IDE hỗ trợ phát triển: viết, biên dịch và debug chương trình Java.  
+  - IDE hỗ trợ phát triển: viết, biên dịch và debug chương trình Java.
+
 ## 🚀 3. Hình ảnh các chức năng chính
+### 🖥️ Giao diện đăng nhập  
+Người chơi nhập **Username** để tham gia trò chơi.  
+<p align="center">
+  <img src="docs/Login.png" alt="Login UI" width="400"/>
+</p>  
+📌 **Hình ảnh 1: Giao diện đăng nhập**
+
+---
+
+### 🎮 Giao diện trò chơi Oẳn Tù Tì  
+Người chơi có thể chọn **Kéo – Búa – Bao**.  
+<p align="center">
+  <img src="docs/GiaoDien.png" alt="Gameplay UI" width="500"/>
+</p>  
+**Hình ảnh 2: Giao diện trò chơi chính**
+
+---
+
+### 📊 Hiển thị kết quả và lịch sử chơi  
+Kết quả thắng/thua/hòa được hiển thị ngay sau mỗi lượt. Người chơi cũng có thể xem lại lịch sử kết quả.  
+
+<p align="center">
+  <img src="" alt="Result UI" width="500"/>
+</p>  
+**Hình ảnh 3: Hiển thị kết quả và lịch sử chơi**
 
 ## 📝 4. Các bước cài đặt
+🔹 Bước 1: Chuẩn bị môi trường
+- Cài đặt Java JDK 8 hoặc mới hơn
+- Tải tại: https://www.oracle.com/java/technologies/javase-downloads.html
+- Sau khi cài đặt, mở Command Prompt / Terminal và kiểm tra:
+  - java -version
+- Nếu hiển thị java version "1.8.x" hoặc cao hơn nghĩa là cài đặt thành công.
+- Cài đặt một IDE để dễ chạy code (khuyến nghị IntelliJ IDEA, cũng có thể dùng Eclipse hoặc NetBeans).
+
+🔹 Bước 2: Tải mã nguồn
+- Clone dự án từ GitHub:
+- git clone https://github.com/your-repo/OanTuTi-Game.git
+  - cd OanTuTi-Game
+- Nếu không dùng Git, bạn có thể bấm nút Download ZIP trên GitHub, sau đó giải nén.
+
+🔹 Bước 3: Mở dự án trong IDE
+- Vào File → Open Project trong IDE.
+- Chọn thư mục chứa source code (Client.java và Server.java).
+- Đảm bảo IDE nhận diện dự án là Java Project.
+
+🔹 Bước 4: Biên dịch và chạy Server
+- Mở file Server.java.
+- Nhấn Run để chạy server.
+- Server sẽ lắng nghe kết nối.
+- Nếu chạy thành công, IDE sẽ hiển thị log kiểu:
+  - Server started on
+  - Waiting for players...
+
+🔹 Bước 5: Biên dịch và chạy Client
+- Mở file Client.java.
+- Nhấn Run để chạy client.
+- Một cửa sổ giao diện hiện ra yêu cầu nhập:
+- Địa chỉ IP server (mặc định 127.0.0.1 nếu client và server chạy cùng máy).
+- Username (ví dụ: "Người chơi 1").
+
+🔹 Bước 6: Bắt đầu chơi
+- Khi có ít nhất 2 client kết nối thành công:
+- Server sẽ tự động ghép cặp người chơi.
+- Mỗi client chọn Kéo – Búa – Bao.
+- Server xử lý kết quả và gửi lại cho cả hai client.
+- Lịch sử kết quả sẽ hiển thị ngay trên giao diện client.
+- Có thể tiếp tục chơi nhiều lượt mà không cần thoát game.
 
 ## 📬 5. Liên hệ
 

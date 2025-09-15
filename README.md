@@ -122,6 +122,9 @@ Kết quả thắng/thua/hòa được hiển thị ngay sau mỗi lượt. Ngư
 - Có thể tiếp tục chơi nhiều lượt mà không cần thoát game.
 
 ## 📬 5. Liên hệ
+- Họ và tên: Trần Đình Hiệp
+- Lớp: CNTT 16-03
+- SDT: 0967925856
 
 © 2025 AIoTLab, Faculty of Information Technology, DaiNam University. All rights reserved.
 

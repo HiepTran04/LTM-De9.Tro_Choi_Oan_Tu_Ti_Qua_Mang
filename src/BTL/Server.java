@@ -1,17 +1,17 @@
 package BTL;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.concurrent.ConcurrentHashMap;
+import java.io.*;
+import java.net.*;
+import java.util.LinkedList;
+import java.util.Queue;
 
 public class Server {
-    private static final int PORT = 30000;
-    private static ConcurrentHashMap<Integer, PlayerHandler> waitingPlayer = new ConcurrentHashMap<>();
+    private static final int PORT = 50000;
+
+    // Hàng chờ cho 1 vs 1
+    private static final Queue<PlayerHandler> waitingQueue = new LinkedList<>();
+    private static final Object queueLock = new Object();
+
     private static int playerIdCounter = 1;
 
     public static void main(String[] args) {
@@ -28,12 +28,12 @@ public class Server {
     }
 
     static class PlayerHandler extends Thread {
-        private Socket socket;
-        private int playerId;
-        private BufferedReader BuffIn;
-        private BufferedWriter BuffOut;
-        private String move = null;
-        private int score = 0; // điểm số người chơi
+        private final Socket socket;
+        private final int playerId;
+        private BufferedReader in;
+        private BufferedWriter out;
+        private String username;
+        private int score = 0;
 
         public PlayerHandler(Socket socket, int playerId) {
             this.socket = socket;
@@ -43,74 +43,96 @@ public class Server {
         @Override
         public void run() {
             try {
-                BuffIn = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                BuffOut = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-                sendMessage("Chào mừng Người chơi " + playerId);
-                sendMessage("Đang chờ người chơi khác...");
+                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
 
-                PlayerHandler opponent = null;
-                synchronized (waitingPlayer) {
-                    if (waitingPlayer.isEmpty()) {
-                        waitingPlayer.put(playerId, this);
+                // Đọc username ngay khi kết nối
+                username = in.readLine();
+                if (username == null || username.trim().isEmpty()) {
+                    username = "Người chơi " + playerId;
+                }
+
+                sendMessage("Xin chào " + username + "! Bạn đã kết nối thành công.");
+
+                // Ghép cặp
+                synchronized (queueLock) {
+                    if (!waitingQueue.isEmpty()) {
+                        PlayerHandler other = waitingQueue.remove();
+                        System.out.println("🔗 Ghép: " + username + " <-> " + other.username);
+
+                        this.sendMessage("Bạn đã được ghép với " + other.username);
+                        other.sendMessage("Bạn đã được ghép với " + this.username);
+
+                        startGame(this, other);
                     } else {
-                        int opponentId = waitingPlayer.keys().nextElement();
-                        opponent = waitingPlayer.remove(opponentId);
-
-                        if (opponent != null) {
-                            sendMessage("Được ghép nối với Người chơi " + opponentId);
-                            opponent.sendMessage("Được ghép nối với Người chơi " + playerId);
-
-                            // bắt đầu game
-                            new GameSession(this, opponent).start();
-                        } else {
-                            waitingPlayer.put(playerId, this);
-                        }
+                        waitingQueue.add(this);
+                        System.out.println("[" + username + "] đang chờ đối thủ...");
+                        sendMessage("Đang chờ người chơi khác...");
                     }
                 }
+
             } catch (IOException e) {
-                System.out.println("Người chơi " + playerId + " bị ngắt kết nối.");
+                System.out.println("⚠ Người chơi " + playerId + " (" + username + ") bị ngắt kết nối khi đăng nhập.");
+                synchronized (queueLock) {
+                    waitingQueue.remove(this);
+                }
+                closeQuietly();
             }
         }
 
-        public String getMove() {
-            return move;
-        }
-
-        public void setMove(String move) {
-            this.move = move;
-        }
-
-        public int getScore() {
-            return score;
-        }
-
-        public void addScore() {
-            this.score++;
-        }
-
-        public void sendMessage(String msg) {
+        public synchronized void sendMessage(String msg) {
             try {
-                if (BuffOut != null) {
-                    BuffOut.write(msg);
-                    BuffOut.newLine();
-                    BuffOut.flush();
+                if (out != null) {
+                    out.write(msg);
+                    out.newLine();
+                    out.flush();
                 }
             } catch (IOException e) {
-                System.out.println("Người chơi " + playerId + " đã ngắt kết nối, không thể gửi tin nhắn.");
-                try {
-                    socket.close();
-                } catch (IOException ex) {
-                }
+                closeQuietly();
             }
         }
 
         public String receiveMessage() throws IOException {
-            return BuffIn.readLine();
+            return in.readLine();
+        }
+
+        public boolean isConnected() {
+            return socket != null && !socket.isClosed();
+        }
+
+        public void resetScore() { score = 0; }
+        public void addScore() { score++; }
+        public int getScore() { return score; }
+        public String getUsername() { return username; }
+
+        public void closeQuietly() {
+            try { if (socket != null) socket.close(); } catch (IOException ignored) {}
+        }
+
+        public void requeueOrMatch() {
+            synchronized (queueLock) {
+                if (!waitingQueue.isEmpty()) {
+                    PlayerHandler other = waitingQueue.remove();
+                    System.out.println("🔗 (requeue) Ghép: " + username + " <-> " + other.username);
+                    this.sendMessage("Bạn đã được ghép lại với " + other.username);
+                    other.sendMessage("Bạn đã được ghép lại với " + this.username);
+                    startGame(this, other);
+                } else {
+                    waitingQueue.add(this);
+                    System.out.println("🔄 " + username + " quay lại hàng chờ.");
+                    sendMessage("Bạn đã quay lại hàng chờ. Đang chờ đối thủ mới...");
+                }
+            }
         }
     }
 
+    private static void startGame(PlayerHandler a, PlayerHandler b) {
+        System.out.println("🎮 Trận mới: " + a.getUsername() + " vs " + b.getUsername());
+        new GameSession(a, b).start();
+    }
+
     static class GameSession extends Thread {
-        private PlayerHandler p1, p2;
+        private final PlayerHandler p1, p2;
 
         public GameSession(PlayerHandler p1, PlayerHandler p2) {
             this.p1 = p1;
@@ -120,65 +142,71 @@ public class Server {
         @Override
         public void run() {
             try {
-                while (true) {
-                    p1.sendMessage("TRÒ CHƠI BẮT ĐẦU! Chọn: KÉO / BÚA / BAO (hoặc QUIT để thoát)");
-                    p2.sendMessage("TRÒ CHƠI BẮT ĐẦU! Chọn: KÉO / BÚA / BAO (hoặc QUIT để thoát)");
+                // Reset điểm khi bắt đầu
+                p1.resetScore();
+                p2.resetScore();
+                p1.sendMessage("Trận mới bắt đầu! Điểm đã được reset.");
+                p2.sendMessage("Trận mới bắt đầu! Điểm đã được reset.");
 
-                    String move1 = p1.receiveMessage();
-                    String move2 = p2.receiveMessage();
+                while (true) {
+                    p1.sendMessage("👉 Hãy chọn: KÉO / BÚA / BAO (hoặc QUIT để thoát)");
+                    p2.sendMessage("👉 Hãy chọn: KÉO / BÚA / BAO (hoặc QUIT để thoát)");
+
+                    String move1 = null, move2 = null;
+                    try { move1 = p1.receiveMessage(); } catch (IOException ignored) {}
+                    try { move2 = p2.receiveMessage(); } catch (IOException ignored) {}
 
                     if (move1 == null || move1.equalsIgnoreCase("QUIT")) {
-                        p2.sendMessage("Đối thủ đã thoát. Bạn thắng!");
-                        break;
+                        handleQuit(p1, p2);
+                        return;
                     }
                     if (move2 == null || move2.equalsIgnoreCase("QUIT")) {
-                        p1.sendMessage("Đối thủ đã thoát. Bạn thắng!");
-                        break;
+                        handleQuit(p2, p1);
+                        return;
                     }
 
-                    p1.setMove(move1);
-                    p2.setMove(move2);
+                    String result = getResult(move1.trim(), move2.trim());
 
-                    String result = getResult(move1, move2);
-
-                    p1.sendMessage("Bạn chọn: " + move1 + " | Đối thủ chọn: " + move2);
-                    p2.sendMessage("Bạn chọn: " + move2 + " | Đối thủ chọn: " + move1);
-
-                    if (result.equals("Hòa")) {
-                        p1.sendMessage("Kết quả: Hòa");
-                        p2.sendMessage("Kết quả: Hòa");
-                    } else if (result.equals("P1")) {
+                    // Gửi kết quả rõ ràng
+                    if (result.equals("P1")) {
                         p1.addScore();
-                        p1.sendMessage("Kết quả: Bạn đã thắng!");
-                        p2.sendMessage("Kết quả: Bạn đã thua!");
-                    } else {
+                        p1.sendMessage("✅ Bạn (" + move1 + ") thắng " + p2.getUsername() + " (" + move2 + ")");
+                        p2.sendMessage("❌ Bạn (" + move2 + ") thua " + p1.getUsername() + " (" + move1 + ")");
+                    } else if (result.equals("P2")) {
                         p2.addScore();
-                        p1.sendMessage("Kết quả: Bạn đã thua!");
-                        p2.sendMessage("Kết quả: Bạn đã thắng!");
+                        p1.sendMessage("❌ Bạn (" + move1 + ") thua " + p2.getUsername() + " (" + move2 + ")");
+                        p2.sendMessage("✅ Bạn (" + move2 + ") thắng " + p1.getUsername() + " (" + move1 + ")");
+                    } else {
+                        p1.sendMessage("🤝 Hòa! Bạn (" + move1 + ") vs " + p2.getUsername() + " (" + move2 + ")");
+                        p2.sendMessage("🤝 Hòa! Bạn (" + move2 + ") vs " + p1.getUsername() + " (" + move1 + ")");
                     }
 
-                    // Gửi bảng điểm
-                    p1.sendMessage("Điểm số hiện tại: Bạn = " + p1.getScore() + " | Đối thủ = " + p2.getScore());
-                    p2.sendMessage("Điểm số hiện tại: Bạn = " + p2.getScore() + " | Đối thủ = " + p1.getScore());
+                    // Gửi điểm số cập nhật
+                    p1.sendMessage("Điểm: " + p1.getUsername() + " [" + p1.getScore() + "] - " + p2.getUsername() + " [" + p2.getScore() + "]");
+                    p2.sendMessage("Điểm: " + p2.getUsername() + " [" + p2.getScore() + "] - " + p1.getUsername() + " [" + p1.getScore() + "]");
                 }
-
-            } catch (IOException e) {
-                System.out.println("Một người chơi đã rời trận.");
-            } finally {
-                try { p1.socket.close(); } catch (Exception ignored) {}
-                try { p2.socket.close(); } catch (Exception ignored) {}
+            } catch (Exception e) {
+                System.out.println("⚠ Lỗi tại GameSession: " + e.getMessage());
             }
         }
 
-        private String getResult(String move1, String move2) {
-            if (move1.equalsIgnoreCase(move2)) return "Hòa";
-            if ((move1.equalsIgnoreCase("BÚA") && move2.equalsIgnoreCase("KÉO")) ||
-                (move1.equalsIgnoreCase("BAO") && move2.equalsIgnoreCase("BÚA")) ||
-                (move1.equalsIgnoreCase("KÉO") && move2.equalsIgnoreCase("BAO"))) {
-                return "P1";
-            } else {
-                return "P2";
+        private void handleQuit(PlayerHandler quitter, PlayerHandler other) {
+            System.out.println("ℹ " + quitter.getUsername() + " đã rời trận.");
+            if (other.isConnected()) {
+                other.sendMessage("Đối thủ (" + quitter.getUsername() + ") đã thoát. Bạn sẽ được ghép với người chơi mới!");
+                other.requeueOrMatch();
             }
+            quitter.closeQuietly();
+        }
+
+        private String getResult(String m1, String m2) {
+            if (m1.equalsIgnoreCase(m2)) return "DRAW";
+            if ((m1.equalsIgnoreCase("BÚA") && m2.equalsIgnoreCase("KÉO")) ||
+                (m1.equalsIgnoreCase("BAO") && m2.equalsIgnoreCase("BÚA")) ||
+                (m1.equalsIgnoreCase("KÉO") && m2.equalsIgnoreCase("BAO"))) {
+                return "P1";
+            }
+            return "P2";
         }
     }
 }

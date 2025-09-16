@@ -4,6 +4,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.*;
 import java.net.*;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.ArrayList;
 
 public class Client extends JFrame {
     private static final String SERVER_IP = "127.0.0.1";
@@ -15,6 +19,7 @@ public class Client extends JFrame {
 
     private JTextArea textArea;
     private JButton rockButton, paperButton, scissorsButton, quitButton;
+    private JButton listButton;
     private JLabel scoreLabel;
 
     private int myScore = 0;
@@ -23,11 +28,14 @@ public class Client extends JFrame {
     private String username;
     private String opponentName = "Đối thủ";
 
+    // 🔹 Cửa sổ danh sách (giữ tham chiếu để không mở nhiều lần)
+    private DanhSach danhSachFrame;
+
     public Client(String username) {
         this.username = username;
 
-        setTitle("🎮 Oẳn Tù Tì - " + username);
-        setSize(600, 450);
+        setTitle("Oẳn Tù Tì - " + username);
+        setSize(650, 520);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -54,21 +62,31 @@ public class Client extends JFrame {
         textArea.setFont(new Font("Consolas", Font.PLAIN, 14));
         JScrollPane scrollPane = new JScrollPane(textArea);
 
-        rockButton = createStyledButton("✊ BÚA", new Color(70, 130, 180));
-        paperButton = createStyledButton("✋ BAO", new Color(60, 179, 113));
-        scissorsButton = createStyledButton("✌ KÉO", new Color(218, 112, 214));
-        quitButton = createStyledButton("❌ THOÁT", new Color(220, 20, 60));
+        rockButton = createStyledButton("BÚA", new Color(70, 130, 180));
+        paperButton = createStyledButton("BAO", new Color(60, 179, 113));
+        scissorsButton = createStyledButton("KÉO", new Color(218, 112, 214));
+        quitButton = createStyledButton("THOÁT", new Color(220, 20, 60));
+        listButton = createStyledButton("Danh sách", new Color(100, 149, 237));
 
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
         buttonPanel.setOpaque(false);
         buttonPanel.add(rockButton);
         buttonPanel.add(paperButton);
         buttonPanel.add(scissorsButton);
         buttonPanel.add(quitButton);
 
+        JPanel challengePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
+        challengePanel.setOpaque(false);
+        challengePanel.add(listButton);
+
+        JPanel southPanel = new JPanel(new BorderLayout());
+        southPanel.setOpaque(false);
+        southPanel.add(buttonPanel, BorderLayout.NORTH);
+        southPanel.add(challengePanel, BorderLayout.SOUTH);
+
         background.add(scoreLabel, BorderLayout.NORTH);
         background.add(scrollPane, BorderLayout.CENTER);
-        background.add(buttonPanel, BorderLayout.SOUTH);
+        background.add(southPanel, BorderLayout.SOUTH);
 
         add(background);
 
@@ -76,13 +94,14 @@ public class Client extends JFrame {
         paperButton.addActionListener(e -> sendMove("BAO"));
         scissorsButton.addActionListener(e -> sendMove("KÉO"));
         quitButton.addActionListener(e -> quitGame());
+        listButton.addActionListener(e -> sendCommand("LIST"));
 
         connectToServer();
     }
 
     private JButton createStyledButton(String text, Color baseColor) {
         JButton button = new JButton(text);
-        button.setPreferredSize(new Dimension(120, 45));
+        button.setPreferredSize(new Dimension(140, 40));
         button.setFocusPainted(false);
         button.setForeground(Color.WHITE);
         button.setBackground(baseColor);
@@ -103,71 +122,110 @@ public class Client extends JFrame {
             out.newLine();
             out.flush();
 
-            textArea.append("✅ Kết nối thành công tới máy chủ...\n");
-            textArea.append("👤 Tên của bạn: " + username + "\n");
+            appendLog("Kết nối thành công tới máy chủ...");
+            appendLog("Tên của bạn: " + username);
 
             Thread listener = new Thread(() -> {
                 String msg;
                 try {
                     while ((msg = in.readLine()) != null) {
-                        if (msg.startsWith("Bạn đã được ghép với")) {
-                            opponentName = msg.replace("Bạn đã được ghép với", "").trim();
+                        if (msg.trim().isEmpty()) continue;
+                        appendLog("[MÁY CHỦ] " + msg);
+
+                        String lower = msg.toLowerCase();
+
+                        // 🔹 Nhận danh sách người chơi
+                        if (msg.startsWith("ONLINE:")) {
+                            String data = msg.substring(7).trim();
+                            List<String> players = new ArrayList<>();
+                            if (!data.isEmpty()) {
+                                for (String p : data.split(",")) {
+                                    players.add(p.trim());
+                                }
+                            }
+
+                            SwingUtilities.invokeLater(() -> {
+                                if (danhSachFrame == null || !danhSachFrame.isDisplayable()) {
+                                    // Gọi sendCommand khi bấm nút thách đấu
+                                    danhSachFrame = new DanhSach(players, target -> {
+                                        sendCommand("CHALLENGE " + target);
+                                        appendLog("Bạn đã gửi lời thách đấu tới " + target);
+                                    });
+                                    danhSachFrame.setVisible(true);
+                                } else {
+                                	danhSachFrame.updatePlayers(players, target -> {
+                                        sendCommand("CHALLENGE " + target);
+                                        appendLog("Bạn đã gửi lời thách đấu tới " + target);
+                                    });
+                                }
+                            });
+                            continue;
+                        }
+
+                        if (lower.contains("ghép") || lower.contains("thách đấu")) {
+                            int idx = lower.lastIndexOf("với");
+                            if (idx != -1) {
+                                String opp = msg.substring(idx + 3).trim();
+                                opp = opp.replaceAll("[.?!]$", "").trim();
+                                opponentName = opp;
+                                myScore = 0;
+                                opponentScore = 0;
+                                updateScoreboard("RESET");
+                            }
+                            continue;
+                        }
+
+                        if (lower.contains("trận mới") || lower.contains("điểm đã được reset")) {
                             myScore = 0;
                             opponentScore = 0;
                             updateScoreboard("RESET");
+                            continue;
                         }
 
-                        if (msg.contains("Điểm đã được reset")) {
-                            myScore = 0;
-                            opponentScore = 0;
-                            updateScoreboard("RESET");
-                        }
-
-                        // ✅ Bắt điểm số từ server
-                        if (msg.startsWith("Điểm:")) {
+                        if (msg.startsWith("Điểm:") || msg.startsWith("Điểm")) {
                             parseAndUpdateScore(msg);
+                            continue;
                         }
+
+                        if (lower.contains("thắng")) updateScoreboard("WIN");
+                        else if (lower.contains("thua")) updateScoreboard("LOSE");
+                        else if (lower.contains("hòa")) updateScoreboard("DRAW");
                     }
                 } catch (IOException e) {
-                    textArea.append("⚠️ Kết nối đã đóng.\n");
+                    appendLog("Kết nối đã đóng.");
+                } finally {
+                    try { if (socket != null) socket.close(); } catch (IOException ignored) {}
                 }
             });
             listener.start();
 
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this, "Không thể kết nối tới máy chủ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
         }
     }
 
     private void sendMove(String move) {
+        sendCommand(move);
+        appendLog("Bạn đã chọn: " + move);
+    }
+
+    private void sendCommand(String cmd) {
         if (out != null) {
             try {
-                out.write(move);
+                out.write(cmd);
                 out.newLine();
                 out.flush();
-                textArea.append("👉 Bạn đã chọn: " + move + "\n");
             } catch (IOException e) {
-                textArea.append("❌ Lỗi khi gửi nước đi.\n");
+                appendLog("Lỗi khi gửi lệnh.");
             }
-        } else {
-            textArea.append("⚠️ Chưa kết nối tới máy chủ!\n");
         }
     }
 
     private void quitGame() {
-        try {
-            if (out != null) {
-                out.write("QUIT");
-                out.newLine();
-                out.flush();
-            }
-            textArea.append("👋 Bạn đã thoát khỏi trò chơi.\n");
-            if (socket != null) socket.close();
-            dispose();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        sendCommand("QUIT");
+        appendLog("Bạn đã thoát khỏi trò chơi.");
+        try { if (socket != null) socket.close(); } catch (IOException ignored) {}
+        dispose();
     }
 
     private void updateScoreboard(String result) {
@@ -183,34 +241,42 @@ public class Client extends JFrame {
         });
     }
 
-    // ✅ Hàm parse điểm số từ Server
     private void parseAndUpdateScore(String msg) {
         try {
-            String[] parts = msg.split(" ");
-            String name1 = parts[1];
-            int score1 = Integer.parseInt(parts[2].replace("[", "").replace("]", ""));
-            String name2 = parts[4];
-            int score2 = Integer.parseInt(parts[5].replace("[", "").replace("]", ""));
+            Pattern p = Pattern.compile("Điểm:\\s*(.+?)\\s*\\[(\\d+)]\\s*-\\s*(.+?)\\s*\\[(\\d+)]", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+            Matcher m = p.matcher(msg);
+            if (m.find()) {
+                String name1 = m.group(1).trim();
+                int s1 = Integer.parseInt(m.group(2));
+                String name2 = m.group(3).trim();
+                int s2 = Integer.parseInt(m.group(4));
 
-            if (username.equals(name1)) {
-                myScore = score1;
-                opponentName = name2;
-                opponentScore = score2;
-            } else {
-                myScore = score2;
-                opponentName = name1;
-                opponentScore = score1;
+                if (username.equalsIgnoreCase(name1)) {
+                    myScore = s1;
+                    opponentScore = s2;
+                    opponentName = name2;
+                } else if (username.equalsIgnoreCase(name2)) {
+                    myScore = s2;
+                    opponentScore = s1;
+                    opponentName = name1;
+                }
+                updateScoreboard("UPDATE");
             }
-            updateScoreboard("UPDATE");
         } catch (Exception e) {
-            System.out.println("⚠ Lỗi parse điểm: " + msg);
+            System.out.println("Lỗi parse điểm: " + e.getMessage());
         }
     }
 
-    // 🔹 Form Login
+    private void appendLog(String line) {
+        SwingUtilities.invokeLater(() -> {
+            textArea.append(line + "\n");
+            textArea.setCaretPosition(textArea.getDocument().getLength());
+        });
+    }
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            JFrame loginFrame = new JFrame("Đăng nhập Oẳn Tù Tì");
+            JFrame loginFrame = new JFrame("Nhập tên người chơi Oẳn Tù Tì");
             loginFrame.setSize(400, 220);
             loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             loginFrame.setLocationRelativeTo(null);
@@ -232,7 +298,7 @@ public class Client extends JFrame {
             gbc.insets = new Insets(10, 10, 10, 10);
             gbc.fill = GridBagConstraints.HORIZONTAL;
 
-            JLabel title = new JLabel("🎮 Đăng nhập Oẳn Tù Tì", SwingConstants.CENTER);
+            JLabel title = new JLabel("Nhập tên người chơi Oẳn Tù Tì", SwingConstants.CENTER);
             title.setFont(new Font("Segoe UI", Font.BOLD, 20));
             title.setForeground(Color.DARK_GRAY);
 

@@ -52,26 +52,29 @@
   - IDE hỗ trợ phát triển: viết, biên dịch và debug chương trình Java.
 
 ## 🚀 3. Hình ảnh các chức năng chính
-### 🖥️ Giao diện đăng nhập  
-Người chơi nhập **Username** để tham gia trò chơi.  
+### Giao diện đăng nhập 
 <p align="center">
   <img src="docs/Login.png" alt="Login UI" width="500"/>
 </p>  
 <p align="center">**Hình ảnh 1: Giao diện đăng nhập**</p>
 
-### 🎮 Giao diện trò chơi Oẳn Tù Tì  
-Người chơi có thể chọn **Kéo – Búa – Bao**.  
+### Giao diện trò chơi Oẳn Tù Tì 
 <p align="center">
   <img src="docs/GameplayUI.png" alt="Gameplay UI" width="500"/>
 </p>  
 <p align="center">**Hình ảnh 2: Giao diện trò chơi chính**</p>
 
-### 📊 Hiển thị kết quả và lịch sử chơi  
-Kết quả thắng/thua/hòa được hiển thị ngay sau mỗi lượt. Người chơi cũng có thể xem lại lịch sử kết quả.
+### Giao diện hiển thị danh sách người chơi
 <p align="center">
-  <img src="" alt="Result UI" width="500"/>
+  <img src="docs/DanhSach.png" alt="Result UI" width="500"/>
 </p>  
-**Hình ảnh 3: Hiển thị kết quả và lịch sử chơi**
+<p align="center">**Hình ảnh 3: Giao diện dang sách người chơi**</p>
+
+### Giao diện bảng xếp hạng
+<p align="center">
+  <img src="docs/BXH.png" alt="BXH" width="500">
+</p>
+<p align="center">**Hình ảnh 4: Giao diện bảng xếp hạng**</p>
 
 ## 📝 4. Các bước cài đặt
 🔹 Bước 1: Chuẩn bị môi trường

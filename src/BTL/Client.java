@@ -5,6 +5,7 @@ import java.awt.*;
 import java.io.*;
 import java.net.*;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ public class Client extends JFrame {
     private JTextArea textArea;
     private JButton rockButton, paperButton, scissorsButton, quitButton;
     private JButton listButton;
+    private JButton rankButton;
     private JLabel scoreLabel;
 
     private int myScore = 0;
@@ -28,7 +30,7 @@ public class Client extends JFrame {
     private String username;
     private String opponentName = "Đối thủ";
 
-    // 🔹 Cửa sổ danh sách (giữ tham chiếu để không mở nhiều lần)
+    // 🔹 Cửa sổ danh sách
     private DanhSach danhSachFrame;
 
     public Client(String username) {
@@ -67,22 +69,24 @@ public class Client extends JFrame {
         scissorsButton = createStyledButton("KÉO", new Color(218, 112, 214));
         quitButton = createStyledButton("THOÁT", new Color(220, 20, 60));
         listButton = createStyledButton("Danh sách", new Color(100, 149, 237));
+        rankButton = createStyledButton("BXH", new Color(255, 165, 0));
 
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
-        buttonPanel.setOpaque(false);
-        buttonPanel.add(rockButton);
-        buttonPanel.add(paperButton);
-        buttonPanel.add(scissorsButton);
-        buttonPanel.add(quitButton);
+        JPanel topRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
+        topRow.setOpaque(false);
+        topRow.add(rockButton);
+        topRow.add(paperButton);
+        topRow.add(scissorsButton);
 
-        JPanel challengePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
-        challengePanel.setOpaque(false);
-        challengePanel.add(listButton);
+        JPanel bottomRow = new JPanel(new BorderLayout());
+        bottomRow.setOpaque(false);
+        bottomRow.add(listButton, BorderLayout.WEST);
+        bottomRow.add(rankButton, BorderLayout.CENTER);
+        bottomRow.add(quitButton, BorderLayout.EAST);
 
-        JPanel southPanel = new JPanel(new BorderLayout());
+        JPanel southPanel = new JPanel(new GridLayout(2, 1, 5, 5));
         southPanel.setOpaque(false);
-        southPanel.add(buttonPanel, BorderLayout.NORTH);
-        southPanel.add(challengePanel, BorderLayout.SOUTH);
+        southPanel.add(topRow);
+        southPanel.add(bottomRow);
 
         background.add(scoreLabel, BorderLayout.NORTH);
         background.add(scrollPane, BorderLayout.CENTER);
@@ -90,11 +94,12 @@ public class Client extends JFrame {
 
         add(background);
 
-        rockButton.addActionListener(e -> sendMove("BÚA"));
+        rockButton.addActionListener(e -> sendMove("BUA"));
         paperButton.addActionListener(e -> sendMove("BAO"));
-        scissorsButton.addActionListener(e -> sendMove("KÉO"));
+        scissorsButton.addActionListener(e -> sendMove("KEO"));
         quitButton.addActionListener(e -> quitGame());
         listButton.addActionListener(e -> sendCommand("LIST"));
+        rankButton.addActionListener(e -> showRank());
 
         connectToServer();
     }
@@ -136,42 +141,22 @@ public class Client extends JFrame {
 
                         // 🔹 Nhận danh sách người chơi
                         if (msg.startsWith("ONLINE:")) {
-                            String data = msg.substring(7).trim();
-                            List<String> players = new ArrayList<>();
-                            if (!data.isEmpty()) {
-                                for (String p : data.split(",")) {
-                                    players.add(p.trim());
-                                }
-                            }
+                            handleOnlineList(msg);
+                            continue;
+                        }
 
-                            SwingUtilities.invokeLater(() -> {
-                                if (danhSachFrame == null || !danhSachFrame.isDisplayable()) {
-                                    // Gọi sendCommand khi bấm nút thách đấu
-                                    danhSachFrame = new DanhSach(players, target -> {
-                                        sendCommand("CHALLENGE " + target);
-                                        appendLog("Bạn đã gửi lời thách đấu tới " + target);
-                                    });
-                                    danhSachFrame.setVisible(true);
-                                } else {
-                                	danhSachFrame.updatePlayers(players, target -> {
-                                        sendCommand("CHALLENGE " + target);
-                                        appendLog("Bạn đã gửi lời thách đấu tới " + target);
-                                    });
-                                }
-                            });
+                        // 🔹 Khi server thông báo bắt đầu trận mới
+                        if (msg.startsWith("Trận mới với")) {
+                            opponentName = msg.replace("Trận mới với", "")
+                                              .replace("bắt đầu!", "").trim();
+                            myScore = 0;
+                            opponentScore = 0;
+                            updateScoreboard("RESET");
                             continue;
                         }
 
                         if (lower.contains("ghép") || lower.contains("thách đấu")) {
-                            int idx = lower.lastIndexOf("với");
-                            if (idx != -1) {
-                                String opp = msg.substring(idx + 3).trim();
-                                opp = opp.replaceAll("[.?!]$", "").trim();
-                                opponentName = opp;
-                                myScore = 0;
-                                opponentScore = 0;
-                                updateScoreboard("RESET");
-                            }
+                            resetOpponentFromMessage(msg, lower);
                             continue;
                         }
 
@@ -197,10 +182,58 @@ public class Client extends JFrame {
                     try { if (socket != null) socket.close(); } catch (IOException ignored) {}
                 }
             });
+
             listener.start();
 
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this, "Không thể kết nối tới máy chủ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void handleOnlineList(String msg) {
+        String data = msg.substring(7).trim();
+        List<String> players = new ArrayList<>();
+        if (!data.isEmpty()) {
+            for (String p : data.split(",")) {
+                players.add(p.trim());
+            }
+        }
+
+        SwingUtilities.invokeLater(() -> {
+            if (danhSachFrame == null || !danhSachFrame.isDisplayable()) {
+                danhSachFrame = new DanhSach(
+                    players,
+                    target -> {
+                        sendCommand("CHALLENGE " + target);
+                        appendLog("Bạn đã gửi lời thách đấu tới " + target);
+                    },
+                    () -> {
+                        sendCommand("LIST");
+                        appendLog("Đang làm mới danh sách người chơi...");
+                    }
+                );
+                danhSachFrame.setVisible(true);
+            } else {
+                danhSachFrame.updatePlayers(
+                    players,
+                    target -> {
+                        sendCommand("CHALLENGE " + target);
+                        appendLog("Bạn đã gửi lời thách đấu tới " + target);
+                    }
+                );
+            }
+        });
+    }
+
+    private void resetOpponentFromMessage(String msg, String lower) {
+        int idx = lower.lastIndexOf("với");
+        if (idx != -1) {
+            String opp = msg.substring(idx + 3).trim();
+            opp = opp.replaceAll("[.?!]$", "").trim();
+            opponentName = opp;
+            myScore = 0;
+            opponentScore = 0;
+            updateScoreboard("RESET");
         }
     }
 
@@ -223,9 +256,11 @@ public class Client extends JFrame {
 
     private void quitGame() {
         sendCommand("QUIT");
-        appendLog("Bạn đã thoát khỏi trò chơi.");
-        try { if (socket != null) socket.close(); } catch (IOException ignored) {}
-        dispose();
+        appendLog("Bạn đã rời trận đấu, quay lại danh sách.");
+        myScore = 0;
+        opponentScore = 0;
+        opponentName = "Đối thủ";
+        updateScoreboard("RESET");
     }
 
     private void updateScoreboard(String result) {
@@ -243,13 +278,14 @@ public class Client extends JFrame {
 
     private void parseAndUpdateScore(String msg) {
         try {
-            Pattern p = Pattern.compile("Điểm:\\s*(.+?)\\s*\\[(\\d+)]\\s*-\\s*(.+?)\\s*\\[(\\d+)]", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+            Pattern p = Pattern.compile("(Điểm|Điểm số):\\s*(\\S+)\\s*\\[(\\d+)]\\s*-\\s*(\\S+)\\s*\\[(\\d+)]",
+                    Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
             Matcher m = p.matcher(msg);
             if (m.find()) {
-                String name1 = m.group(1).trim();
-                int s1 = Integer.parseInt(m.group(2));
-                String name2 = m.group(3).trim();
-                int s2 = Integer.parseInt(m.group(4));
+                String name1 = m.group(2).trim();
+                int s1 = Integer.parseInt(m.group(3));
+                String name2 = m.group(4).trim();
+                int s2 = Integer.parseInt(m.group(5));
 
                 if (username.equalsIgnoreCase(name1)) {
                     myScore = s1;
@@ -272,6 +308,22 @@ public class Client extends JFrame {
             textArea.append(line + "\n");
             textArea.setCaretPosition(textArea.getDocument().getLength());
         });
+    }
+
+    // 🔹 Mở cửa sổ BXH
+    private void showRank() {
+        Map<String, Integer> ranking = BangXepHangData.getRankingMap();
+        if (ranking == null || ranking.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Chưa có dữ liệu BXH!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        List<Map.Entry<String, Integer>> list = ranking.entrySet().stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .toList();
+
+        BangXepHang bxhFrame = new BangXepHang(list);
+        bxhFrame.setVisible(true);
     }
 
     public static void main(String[] args) {

@@ -3,16 +3,16 @@ package BTL;
 import javax.swing.*;
 import java.awt.*;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class DanhSach extends JFrame {
     private JPanel playerPanel;
 
-    public DanhSach(List<String> players, java.util.function.Consumer<String> onChallenge) {
+    public DanhSach(List<String> players, Consumer<String> onChallenge, Runnable onRefresh) {
         setTitle("👥 Người chơi online");
-        setSize(320, 420);
+        setSize(360, 460);
         setLocationRelativeTo(null);
 
-        // 🔹 Nền gradient xanh – hồng
         JPanel background = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -29,7 +29,7 @@ public class DanhSach extends JFrame {
         background.setLayout(new BorderLayout(10, 10));
         background.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        JLabel title = new JLabel("👥 Người chơi online", SwingConstants.CENTER);
+        JLabel title = new JLabel("Người chơi online", SwingConstants.CENTER);
         title.setFont(new Font("Segoe UI", Font.BOLD, 20));
         title.setForeground(Color.DARK_GRAY);
 
@@ -43,6 +43,7 @@ public class DanhSach extends JFrame {
         scrollPane.getViewport().setOpaque(false);
         scrollPane.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2, true));
 
+        // Nút đóng
         JButton closeButton = new JButton("Đóng");
         closeButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
         closeButton.setForeground(Color.WHITE);
@@ -52,8 +53,29 @@ public class DanhSach extends JFrame {
         closeButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         closeButton.addActionListener(e -> dispose());
 
-        JPanel southPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        // Nút làm mới
+        JButton refreshButton = new JButton("🔄 Làm mới");
+        refreshButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        refreshButton.setForeground(Color.WHITE);
+        refreshButton.setBackground(new Color(60, 179, 113));
+        refreshButton.setFocusPainted(false);
+        refreshButton.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+        refreshButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        refreshButton.addActionListener(e -> {
+            // Reset lại danh sách trên UI
+            playerPanel.removeAll();
+            playerPanel.revalidate();
+            playerPanel.repaint();
+
+            // Gọi callback refresh để client gửi lệnh LIST về server
+            if (onRefresh != null) {
+                onRefresh.run();
+            }
+        });
+
+        JPanel southPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
         southPanel.setOpaque(false);
+        southPanel.add(refreshButton);
         southPanel.add(closeButton);
 
         background.add(title, BorderLayout.NORTH);
@@ -65,36 +87,39 @@ public class DanhSach extends JFrame {
         updatePlayers(players, onChallenge);
     }
 
-    public void updatePlayers(List<String> players, java.util.function.Consumer<String> onChallenge) {
+    public void updatePlayers(List<String> players, Consumer<String> onChallenge) {
         playerPanel.removeAll();
         for (String player : players) {
             JPanel row = new JPanel();
             row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
             row.setOpaque(false);
 
-            // Tên người chơi (giới hạn width + cắt ...)
             JLabel nameLabel = new JLabel(player);
             nameLabel.setFont(new Font("Segoe UI", Font.PLAIN, 16));
             nameLabel.setForeground(Color.BLACK);
-            nameLabel.setPreferredSize(new Dimension(160, 25)); // Giữ cố định 160px
+            nameLabel.setPreferredSize(new Dimension(160, 25));
             nameLabel.setMaximumSize(new Dimension(160, 25));
             nameLabel.setMinimumSize(new Dimension(160, 25));
+            nameLabel.setToolTipText(player);
 
-            // Nếu tên quá dài thì hiển thị dấu "..."
-            nameLabel.setToolTipText(player); // Hover để xem full tên
-
-            // Nút Thách đấu
-            JButton challengeButton = new JButton("⚔ Thách đấu");
+            JButton challengeButton = new JButton("Thách đấu");
             challengeButton.setFont(new Font("Segoe UI", Font.BOLD, 13));
             challengeButton.setForeground(Color.WHITE);
             challengeButton.setBackground(new Color(100, 149, 237));
             challengeButton.setFocusPainted(false);
             challengeButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             challengeButton.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-            challengeButton.addActionListener(e -> onChallenge.accept(player));
+
+            if (player.toUpperCase().contains("BUSY")) {
+                challengeButton.setEnabled(false);
+                challengeButton.setBackground(new Color(169, 169, 169));
+                challengeButton.setToolTipText("Người chơi đang bận");
+            } else {
+                challengeButton.addActionListener(e -> onChallenge.accept(player));
+            }
 
             row.add(nameLabel);
-            row.add(Box.createHorizontalGlue()); // đẩy nút sang phải
+            row.add(Box.createHorizontalGlue());
             row.add(challengeButton);
 
             row.setBorder(BorderFactory.createMatteBorder(
@@ -106,5 +131,4 @@ public class DanhSach extends JFrame {
         playerPanel.revalidate();
         playerPanel.repaint();
     }
-
 }

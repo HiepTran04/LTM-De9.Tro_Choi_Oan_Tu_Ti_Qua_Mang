@@ -54,7 +54,7 @@
 ## 🚀 3. Hình ảnh các chức năng chính
 ### Giao diện đăng nhập 
 <p align="center">
-  <img src="docs/Login.png" alt="Login UI" width="500"/>
+  <img src="docs/login.png" alt="Login UI" width="500"/>
 </p>  
 <p align="center">**Hình ảnh 1: Giao diện đăng nhập**</p>
 

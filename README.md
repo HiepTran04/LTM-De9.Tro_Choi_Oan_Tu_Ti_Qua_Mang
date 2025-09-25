@@ -55,14 +55,14 @@
 ### 🖥️ Giao diện đăng nhập  
 Người chơi nhập **Username** để tham gia trò chơi.  
 <p align="center">
-  <img src="docs/Login.png" alt="Login UI" width="400"/>
+  <img src="docs/Login.png" alt="Login UI" width="500"/>
 </p>  
 <p align="center">**Hình ảnh 1: Giao diện đăng nhập**</p>
 
 ### 🎮 Giao diện trò chơi Oẳn Tù Tì  
 Người chơi có thể chọn **Kéo – Búa – Bao**.  
 <p align="center">
-  <img src="docs/GiaoDien.png" alt="Gameplay UI" width="500"/>
+  <img src="docs/GameplayUI.png" alt="Gameplay UI" width="500"/>
 </p>  
 <p align="center">**Hình ảnh 2: Giao diện trò chơi chính**</p>
 
